@@ -1,0 +1,247 @@
+---
+title: "Suicides overview from 1985 to 2016 "
+author: "Vladimir Vranjes"
+date: "6/12/2020"
+output: 
+  html_document:
+    toc: yes 
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,warning = FALSE,message = FALSE
+                      ,error = FALSE)
+library(tidyverse)
+library(writexl)
+library(rworldmap)
+library(countrycode)
+```
+
+# Introduction 
+My name is Vladimir Vranješ and in this project I will present you overview of suicides that happend from 1985-2016.Reason I picked this dark topic because of that this is ongoing problem that seems never to end and I wanted to see how many lives have it taken . 
+
+# Presentation and description of the problem
+Suicide is the act of intentionally causing one's own death.It can occur as result of mental disorders ,financial difficulties,bullying etc .  Suicide is problem  that  is following humankind through centuries.It is problem that is very hard to deal with and it is topic that humans try to figure out  for a very long time . It is one of the most frequent causes of the death in the world and the reason I chosed this time span is because this is period that human population grew most .
+
+# Presentation of data
+```{r}
+Data<-read.csv(file = "master.csv")%>%rename(CountryName = ï..country)  ## Here I also  renamed the first column 
+Data%>%head(5)
+```
+
+# Number of suicides per continent 
+
+```{r}
+Data$continent<-countrycode(sourcevar = Data[, "CountryName"],
+                              origin = "country.name",
+                              destination = "continent")    # Here i used package countrycode to Add another column to split out Countries by continents
+
+ContinentData<-Data%>%select(continent,suicides_no)%>%group_by(continent)%>%summarise(sum(suicides_no))
+
+names(ContinentData)[2]<-"NumberOfSuicides"
+
+ContinentData%>%arrange(desc(NumberOfSuicides))%>%top_n(4)   # Here i Excluded Africa because of lack of informations 
+```
+
+
+# Top 10 Countries with most suicides 
+```{r}
+Data1<-Data%>%select(CountryName,suicides_no)%>%group_by(CountryName)%>%arrange(desc(CountryName))%>%summarise(sum(suicides_no))
+names(Data1)[2]<-"NumberOfSuicides"
+Data1%>%arrange(desc(NumberOfSuicides))%>%top_n(10)
+
+
+
+```
+# Top 10 countries with least suicides 
+```{r}
+Data1<-Data%>%select(CountryName,suicides_no)%>%group_by(CountryName)%>%arrange(desc(CountryName))%>%summarise(sum(suicides_no))%>%ungroup()
+names(Data1)[2]<-"NumberOfSuicides"
+Data1%>%arrange(desc(NumberOfSuicides))%>%top_n(-10)
+
+```
+ **It is interesting here that Dominica and Saint Kitts and Nevis did not have one suicide in span of 31 years**
+ 
+
+
+
+
+
+# Higest rate of suicide between two sexes
+```{r}
+
+TotalSuicides<-Data%>%select(suicides_no)%>%sum()
+
+Data2<-Data%>%select(sex,suicides_no)%>%group_by(sex)%>%summarise((sum(suicides_no)/TotalSuicides)*100)
+names(Data2)[2]<-"NumberOfSuicides"
+
+Data2
+```
+**Here we see that from Total number of sucides which is over 6 milions, about 76.9 % are males and 23.1 % are females **
+
+
+```{r}
+ Data %>%
+  group_by(sex) %>%
+  summarize(suicide_per_100k = (sum(as.numeric(suicides_no)) / sum(as.numeric(population))) * 100000) %>%
+ggplot(aes(x = sex, y = suicide_per_100k, fill = sex)) + 
+  geom_bar(stat = "identity") + 
+  labs(title = "Global suicides (per 100k), by Sex",
+       x = "Sex", 
+       y = "Suicides per 100k") +
+  theme(legend.position = "none") + 
+  scale_y_continuous(breaks = seq(0, 25), minor_breaks = F)
+```
+     
+   **Here I also visualised the differnce in numbers per 100 k of population  between two of sexes**
+
+
+# 10 countries with highest average rate of suicides per 100 K of population 
+
+```{r}
+DATA<-Data%>%select(CountryName,suicides.100k.pop)%>%group_by(CountryName)%>%
+  summarise(mean(suicides.100k.pop))
+
+names(DATA)[2]<-"SuicidePer100Kpop"
+
+DATA%>%arrange(desc(SuicidePer100Kpop))%>%top_n(10)
+
+```
+
+# Graphical presentation of Global suicides (per 100k )
+
+```{r}
+Data %>%
+  group_by(year) %>%
+  summarize(population = sum(population), 
+            suicides = sum(suicides_no), 
+            suicides_per_100k = (suicides / population) * 100000) %>%
+  ggplot(aes(x = year, y = suicides_per_100k)) + 
+  geom_line(col = "deepskyblue3", size = 1) + 
+  geom_point(col = "deepskyblue3", size = 2) + 
+ 
+  labs(title = "Global Suicides (per 100k)",
+       subtitle = "Over time of 1985 - 2015.",
+       x = "Year", 
+       y = "Suicides per 100k") + 
+  scale_x_continuous(breaks = seq(1985, 2015, 2)) + 
+  scale_y_continuous(breaks = seq(10, 20))
+```
+
+# Graphical presentation of global suicides per 100 k by Age 
+
+```{r}
+ Data %>%
+  group_by(age) %>%
+  summarize(suicide_per_100k = (sum(as.numeric(suicides_no))/sum(as.numeric(population)))*100000) %>%
+  ggplot(aes(x=age, y=suicide_per_100k, fill = age)) + 
+  geom_bar(stat = "identity") + 
+  labs(title = "Global suicides per 100k, by Age",
+       x = "Age", 
+       y = "Suicides per 100k") +
+  theme(legend.position = "none") + 
+  scale_y_continuous(breaks = seq(0, 25, 1), minor_breaks = F)
+
+```
+
+
+
+
+
+# Number of suicides for each generation 
+
+```{r}
+Data3<-Data%>%select(generation,suicides_no)%>%group_by(generation)%>%summarise(sum(suicides_no))
+
+names(Data3)[2]<-"NumberOfSuicides"
+
+Data3%>%arrange(desc(NumberOfSuicides))
+
+```
+
+
+
+```{r}
+
+
+Data%>%ggplot(aes(x=year,y=suicides_no,fill=generation))+geom_bar(stat = "identity")+
+  labs(title = "Suicide numbers over years by generation",
+                x="Years",
+                y="Number of Suicides")
+
+
+```
+
+# Ten years with most suicides 
+
+```{r}
+Data4<-Data%>%select(year,suicides_no)%>%group_by(year)%>%summarise(sum(suicides_no))
+
+names(Data4)[2]<-"NumberOfSuicides"
+Data4%>%arrange(desc(NumberOfSuicides))%>%top_n(10)
+
+
+```
+
+
+
+# Total number of suicides over each year
+
+```{r}
+Data5<-Data%>%select(year,suicides_no)%>%group_by(year)%>%summarise(sum(suicides_no))
+
+names(Data5)[2]<-"NumberOfSuicides"
+Data5%>%arrange(desc(NumberOfSuicides))%>%ggplot(aes(x=year,y=NumberOfSuicides,fill=year))+geom_bar(stat = "identity")
+
+```
+
+
+#  Geographical map of the suicide rates
+
+```{r,message=FALSE}
+country <- Data %>%
+  group_by(CountryName) %>%
+  summarize(suicide_per_100k = (sum(as.numeric(suicides_no)) / sum(as.numeric(population))) * 100000)
+
+countrydata <- joinCountryData2Map(country, joinCode = "NAME", nameJoinColumn = "CountryName")
+
+par(mar=c(0, 0, 0, 0)) # margins
+
+mapCountryData(countrydata, 
+nameColumnToPlot="suicide_per_100k", 
+mapTitle="", 
+colourPalette = "heat", 
+oceanCol="lightblue", 
+missingCountryCol="grey65",
+addLegend = FALSE,
+catMethod = "pretty")
+```
+
+**Here is a geographical heat map of the suicide rates between the timeframe of this analysis - note the lack of data for Africa and Asia**
+
+
+
+
+# Conclusion 
+
+By analizing this data we came across that in 30 years over 6 milion people took it`s own life . In that number 76 percent were males and 24 percent were females.Generation with most suicides were Bommers and generation with least suicides were Children . Year with most suicides were 1999 and countries with most suicides were Russian Federation followed by USA (these two countries were only that had over milion suicides ). Country with highest average rate of suicides per 100 k of population is Lithuania . One interesting fact we came across is that Dominica and Saint Kitts and Nevis did not have any suicides in span of 30 years which is pretty amazing . Continent with most suicides in this period of time is Europe with 3.4 milion suicides in which Russia takes more than 1/3 of complete number .   
+
+
+
+
+
+# References 
+
+***References used to make this Data that was used for analysis***
+
+
+United Nations Development Program. (2018). Human development index (HDI). Retrieved from http://hdr.undp.org/en/indicators/137506
+
+World Bank. (2018). World development indicators: GDP (current US$) by country:1985 to 2016. Retrieved from http://databank.worldbank.org/data/source/world-development-indicators#
+
+[Szamil]. (2017). Suicide in the Twenty-First Century [dataset]. Retrieved from https://www.kaggle.com/szamil/suicide-in-the-twenty-first-century/notebook
+
+World Health Organization. (2018). Suicide prevention. Retrieved from http://www.who.int/mental_health/suicide-prevention/en/ 
+
+***Data found  on : ***
+https://www.kaggle.com/
